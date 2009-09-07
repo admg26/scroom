@@ -9,49 +9,68 @@ import pango
 
 class TextArea(gtk.DrawingArea):
    
-    def __init__(self):
+	def __init__(self):
 		super(TextArea, self).__init__()
 		self.connect("expose_event", self.do_expose_event)
-		self.text = ""
-    # Handle the expose-event by drawing
-    def do_expose_event(self, widget, event):
+		self.text = []
+		self.output_text = ""
+
+	# Handle the expose-event by drawing
+	def do_expose_event(self, widget, event):
         # Create the cairo context
-        cr = self.window.cairo_create()
+		cr = self.window.cairo_create()
        
         #Create a pango layout
-        self.pg = cr.create_layout()
+		self.pg = cr.create_layout()
 
 		 # Restrict Cairo to the exposed area; avoid extra work
-        cr.rectangle(event.area.x, event.area.y,
+		cr.rectangle(event.area.x, event.area.y,
                 event.area.width, event.area.height)
-        cr.clip()
+		cr.clip()
 
-        self.draw(cr, *self.window.get_size())
+		self.draw(cr, *self.window.get_size())
 
-    def draw(self, cr, width, height):
-        cr.move_to(20,20)
+	def parse_text(self):
+		line_count  = range(len(self.text))
+		
+		lines_to_show = 100
+		if line_count < 100:
+			lines_to_show = line_count 
+		
+		self.output_text = '\n'.join(self.text[0:10]) 
 
-        #Set the Pango font
-        desc = pango.FontDescription("sans normal 12")
-        self.pg.set_font_description(desc)
-        self.pg.set_text(self.text)
-        
-        #Render text with Cairo
-        cr.show_layout(self.pg)
-        
-    def redraw_canvas(self):   
-        if self.window:
-            x, y, w, h = self.get_allocation()
-            self.window.invalidate_rect((0,0,w,h), False)
-            cr = self.window.cairo_create()
-            cr.update_layout(self.pg)
-            self.draw(cr, *self.window.get_size())
+		print self.output_text
+
+	def draw(self, cr, width, height):
+		cr.move_to(20,20)
+
+		#Set the Pango font
+		desc = pango.FontDescription("sans normal 10")
+		self.pg.set_font_description(desc)
+		self.parse_text()
+		self.pg.set_text(self.output_text)
+		print self.pg.get_pixel_extents()
+		print "line count " + str(self.pg.get_line_count())
+		print "pixel size " + str(self.pg.get_pixel_size())
+		#Render text with Cairo
+		cr.show_layout(self.pg)
+		cr.set_font_size(12)
+		cr.move_to(20,190)
+		cr.show_text("test")
+
+	def redraw_canvas(self):   
+		if self.window:
+			x, y, w, h = self.get_allocation()
+			self.window.invalidate_rect((0,0,w,h), False)
+			cr = self.window.cairo_create()
+			cr.update_layout(self.pg)
+			self.draw(cr, *self.window.get_size())
 
 class PyViewer():
     ui = '''<ui>
     <menubar name="MenuBar">
       <menu name="File" action="File">
-	<menuitem name="Open" action="Open"/>	
+		<menuitem name="Open" action="Open"/>	
         <menuitem name="Quit" action="Quit"/>
       </menu>
     </menubar>
@@ -91,7 +110,7 @@ class PyViewer():
 		self.actiongroup = actiongroup
 		# Create actions
 		actiongroup.add_actions([('Open', gtk.STOCK_OPEN, '_Open', None, None, self.open_file),
-				 ('Quit', gtk.STOCK_QUIT, '_Quit', None, None, self.quit_viewer),
+								 ('Quit', gtk.STOCK_QUIT, '_Quit', None, None, self.quit_viewer),
                                  ('File', None, '_File')])
        
 		#actiongroup.get_action('Quit').connect('activate',self.quit_viewer)
@@ -137,14 +156,14 @@ class PyViewer():
 
 			try: 
 				ifile = open(self.filename, 'r')
-				text = ifile.read()
+				text = ifile.read().split('\n')
+				ifile.close()
+				dialog.destroy()
 				self.drawing.text = text
 				self.drawing.redraw_canvas()	
-				ifile.close()
 			except IOError:
 				pass
 
-			dialog.destroy()
 	
 		elif response == gtk.RESPONSE_CANCEL:
 			self.window.set_title("Python Viewer")
