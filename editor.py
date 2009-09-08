@@ -17,6 +17,8 @@ class TextArea(gtk.DrawingArea):
 
     # Handle the expose-event by drawing
     def do_expose_event(self, widget, event):
+        '''Sets up cairo and calls draw() to draw the text'''    
+
         # Create the cairo context
         cr = self.window.cairo_create()
        
