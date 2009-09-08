@@ -14,6 +14,7 @@ class TextArea(gtk.DrawingArea):
         self.connect("expose_event", self.do_expose_event)
         self.text = []
         self.output_text = ""
+        self.scroll = 0
 
     # Handle the expose-event by drawing
     def do_expose_event(self, widget, event):
@@ -39,29 +40,28 @@ class TextArea(gtk.DrawingArea):
         if line_count < 100:
             lines_to_show = line_count 
         
-        self.output_text = '\n'.join(self.text[0:1]) 
-
-        print self.output_text
+        self.output_text = '\n'.join(self.text[0:170]) 
 
     def draw(self, cr, width, height):
-        cr.move_to(20,20)
+        cr.move_to(20,20+self.scroll)
         #pango.SCALE = 1000
         #Set the Pango font
         desc = pango.FontDescription("sans normal 10")
         self.pg.set_font_description(desc)
         self.parse_text()
         self.pg.set_text(self.output_text)
-        print self.pg.get_pixel_extents()
-        print "line count " + str(self.pg.get_line_count())
-        print "pixel size " + str(self.pg.get_pixel_size())
-        print pango.SCALE
+        #print self.pg.get_pixel_extents()
+        #print "line count " + str(self.pg.get_line_count())
+        #print "pixel size " + str(self.pg.get_pixel_size())
+        #print pango.SCALE
         #Render text with Cairo
         cr.show_layout(self.pg)
-        cr.set_font_size(10)
-        cr.move_to(20,21)
-        cr.show_text("test")
+        #cr.set_font_size(10)
+        #cr.move_to(20,21)
+        #cr.show_text("test")
 
-    def redraw_canvas(self):   
+    def redraw_canvas(self,scroll):
+        self.scroll = scroll
         if self.window:
             x, y, w, h = self.get_allocation()
             self.window.invalidate_rect((0,0,w,h), False)
@@ -88,7 +88,8 @@ class PyViewer():
         self.window = gtk.Window()
         
         self.window.add_events(gtk.gdk.SCROLL_MASK)
-        self.window.connect("scroll-event", self.wakeup)
+        self.window.connect("scroll-event", self.do_scroll)
+        self.scroll_distance = 0
 
         self.window.connect('destroy', lambda w: gtk.main_quit())
         self.window.set_size_request(600, 500)
@@ -135,11 +136,15 @@ class PyViewer():
         self.window.show_all()
         return
 
-    def wakeup(self, widget, event):
+    def do_scroll(self, widget, event):
         if event.direction == gtk.gdk.SCROLL_UP:
             print "Scroll up"
+            self.scroll_distance = -1
+            self.drawing.redraw_canvas(self.scroll_distance)
         else:
             print "Scroll down"
+            self.scroll_distance = 1
+            self.drawing.redraw_canvas(self.scroll_distance)
 
     def quit_viewer(self,data=None):
         gtk.main_quit()
@@ -163,7 +168,7 @@ class PyViewer():
                 ifile.close()
                 dialog.destroy()
                 self.drawing.text = text
-                self.drawing.redraw_canvas()    
+                self.drawing.redraw_canvas(self.scroll_distance)    
             except IOError:
                 pass
 
