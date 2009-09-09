@@ -15,23 +15,24 @@ class TextArea(gtk.DrawingArea):
         self.text = []
         self.output_text = ""
         self.scroll = 0
+        self.current_point = [20,20]
 
     # Handle the expose-event by drawing
     def do_expose_event(self, widget, event):
         '''Sets up cairo and calls draw() to draw the text'''    
 
         # Create the cairo context
-        cr = self.window.cairo_create()
+        self.cr = self.window.cairo_create()
        
         #Create a pango layout
-        self.pg = cr.create_layout()
+        self.pg = self.cr.create_layout()
 
          # Restrict Cairo to the exposed area; avoid extra work
-        cr.rectangle(event.area.x, event.area.y,
+        self.cr.rectangle(event.area.x, event.area.y,
                 event.area.width, event.area.height)
-        cr.clip()
+        self.cr.clip()
 
-        self.draw(cr, *self.window.get_size())
+        self.draw(*self.window.get_size())
 
     def parse_text(self):
         line_count  = range(len(self.text))
@@ -42,8 +43,9 @@ class TextArea(gtk.DrawingArea):
         
         self.output_text = '\n'.join(self.text[0:170]) 
 
-    def draw(self, cr, width, height):
-        cr.move_to(20,20+self.scroll)
+    def draw(self, width, height):
+        print 
+        self.cr.move_to(20, self.current_point[1]+self.scroll)
         #pango.SCALE = 1000
         #Set the Pango font
         desc = pango.FontDescription("sans normal 10")
@@ -55,19 +57,21 @@ class TextArea(gtk.DrawingArea):
         #print "pixel size " + str(self.pg.get_pixel_size())
         #print pango.SCALE
         #Render text with Cairo
-        cr.show_layout(self.pg)
+        self.cr.show_layout(self.pg)
         #cr.set_font_size(10)
         #cr.move_to(20,21)
         #cr.show_text("test")
 
     def redraw_canvas(self,scroll):
         self.scroll = scroll
+        self.current_point = list(self.cr.get_current_point())
+        print self.cr.get_current_point()
         if self.window:
             x, y, w, h = self.get_allocation()
             self.window.invalidate_rect((0,0,w,h), False)
-            cr = self.window.cairo_create()
-            cr.update_layout(self.pg)
-            self.draw(cr, *self.window.get_size())
+            self.cr = self.window.cairo_create()
+            self.cr.update_layout(self.pg)
+            self.draw(*self.window.get_size())
 
 class PyViewer():
     ui = '''<ui>
@@ -88,8 +92,18 @@ class PyViewer():
         self.window = gtk.Window()
         
         self.window.add_events(gtk.gdk.SCROLL_MASK)
-        self.window.connect("scroll-event", self.do_scroll)
+        #self.window.connect("scroll-event", self.do_scroll)
         self.scroll_distance = 0
+        self.last_position = []
+        self.window.connect('drag_motion', self.do_drag)
+        self.window.drag_dest_set(gtk.DEST_DEFAULT_MOTION,
+                                [("", gtk.TARGET_SAME_APP, 1)],
+                                gtk.gdk.ACTION_PRIVATE)
+        self.window.drag_source_set(gtk.gdk.BUTTON1_MASK,
+                                [("", gtk.TARGET_SAME_APP, 1)],
+                                gtk.gdk.ACTION_PRIVATE)
+
+
 
         self.window.connect('destroy', lambda w: gtk.main_quit())
         self.window.set_size_request(600, 500)
@@ -136,6 +150,21 @@ class PyViewer():
         self.window.show_all()
         return
 
+    def do_drag(self, widget, context, x, y, t):
+        print self.last_position 
+        if self.last_position:
+            dy = self.last_position[0] - y  
+            dt = self.last_position[1] - t  
+            self.last_position = [y,t]
+
+            self.drawing.redraw_canvas(dy)
+        else:
+            self.last_position = [y,t]
+        
+        return False
+        
+
+    """
     def do_scroll(self, widget, event):
         if event.direction == gtk.gdk.SCROLL_UP:
             print "Scroll up"
@@ -145,6 +174,7 @@ class PyViewer():
             print "Scroll down"
             self.scroll_distance = 1
             self.drawing.redraw_canvas(self.scroll_distance)
+    """
 
     def quit_viewer(self,data=None):
         gtk.main_quit()
