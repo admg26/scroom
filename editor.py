@@ -35,6 +35,8 @@ class TextArea(gtk.DrawingArea):
         self.draw(*self.window.get_size())
 
     def parse_text(self):
+        """Decides what section of text needs to be shown"""
+ 
         line_count  = range(len(self.text))
         
         lines_to_show = 100
@@ -44,8 +46,10 @@ class TextArea(gtk.DrawingArea):
         self.output_text = '\n'.join(self.text[0:170]) 
 
     def draw(self, width, height):
-        print 
+        """Invokes cairo and pango to draw the text"""
+        print "calling draw Scroll:", self.scroll, "current point", self.current_point 
         self.cr.move_to(20, self.current_point[1]+self.scroll)
+
         #pango.SCALE = 1000
         #Set the Pango font
         desc = pango.FontDescription("sans normal 10")
@@ -61,17 +65,22 @@ class TextArea(gtk.DrawingArea):
         #cr.set_font_size(10)
         #cr.move_to(20,21)
         #cr.show_text("test")
+        print "endnof drw scroll", self.scroll
 
     def redraw_canvas(self,scroll):
+        """Invalidates the cairo area and 
+        updates the pango layout when text
+        needs to be redrawn"""
+        print "calling redraw scroll", self.scroll, "reassigned to ", scroll
         self.scroll = scroll
+
         self.current_point = list(self.cr.get_current_point())
-        print self.cr.get_current_point()
+
         if self.window:
             x, y, w, h = self.get_allocation()
             self.window.invalidate_rect((0,0,w,h), False)
             self.cr = self.window.cairo_create()
             self.cr.update_layout(self.pg)
-            self.draw(*self.window.get_size())
 
 class PyViewer():
     ui = '''<ui>
@@ -85,6 +94,8 @@ class PyViewer():
     </ui>'''        
     
     def __init__(self):
+        """Set up the window, events and the UIManager"""
+        
         __gsignals__ = { "expose-event": "override" }
 
         self.filename = ""
@@ -94,7 +105,7 @@ class PyViewer():
         self.window.add_events(gtk.gdk.SCROLL_MASK)
         #self.window.connect("scroll-event", self.do_scroll)
         self.scroll_distance = 0
-        self.last_position = []
+        self.last_mouse_value = []
         self.window.connect('drag_motion', self.do_drag)
         self.window.drag_dest_set(gtk.DEST_DEFAULT_MOTION,
                                 [("", gtk.TARGET_SAME_APP, 1)],
@@ -102,7 +113,6 @@ class PyViewer():
         self.window.drag_source_set(gtk.gdk.BUTTON1_MASK,
                                 [("", gtk.TARGET_SAME_APP, 1)],
                                 gtk.gdk.ACTION_PRIVATE)
-
 
 
         self.window.connect('destroy', lambda w: gtk.main_quit())
@@ -151,16 +161,20 @@ class PyViewer():
         return
 
     def do_drag(self, widget, context, x, y, t):
-        print self.last_position 
-        if self.last_position:
-            dy = self.last_position[0] - y  
-            dt = self.last_position[1] - t  
-            self.last_position = [y,t]
+        """Handles the drag event. Causes the
+        canvas to be redrawn"""
+        
+        if self.last_mouse_value:
+            dy = self.last_mouse_value[0] - y  
+            dt = self.last_mouse_value[1] - t  
+            self.last_mouse_value = [y,t]
+            print "filled", self.last_mouse_value, "dy = ", dy
 
             self.drawing.redraw_canvas(dy)
         else:
-            self.last_position = [y,t]
-        
+            self.last_mouse_value = [y,t]
+            print "empty", self.last_mouse_value
+            self.drawing.redraw_canvas(0)
         return False
         
 
@@ -177,9 +191,14 @@ class PyViewer():
     """
 
     def quit_viewer(self,data=None):
+        """Quits program"""
+        
         gtk.main_quit()
     
     def open_file(self, widget, data=None):
+        """Opens a file chooser dialog and returns the filename.
+        Canvas is redrawn if a valid file is opened"""
+        
         dialog = gtk.FileChooserDialog("Open..",
                        None,
                        gtk.FILE_CHOOSER_ACTION_OPEN,
@@ -198,7 +217,7 @@ class PyViewer():
                 ifile.close()
                 dialog.destroy()
                 self.drawing.text = text
-                self.drawing.redraw_canvas(self.scroll_distance)    
+                self.drawing.redraw_canvas(0)    
             except IOError:
                 pass
 
