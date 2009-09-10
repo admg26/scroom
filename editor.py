@@ -19,7 +19,7 @@ class TextArea(gtk.DrawingArea):
 
     # Handle the expose-event by drawing
     def do_expose_event(self, widget, event):
-        '''Sets up cairo and calls draw() to draw the text'''    
+        """Sets up cairo and calls draw() to draw the text"""
 
         # Create the cairo context
         self.cr = self.window.cairo_create()
@@ -47,7 +47,7 @@ class TextArea(gtk.DrawingArea):
 
     def draw(self, width, height):
         """Invokes cairo and pango to draw the text"""
-        print "calling draw Scroll:", self.scroll, "current point", self.current_point 
+
         self.cr.move_to(20, self.current_point[1]+self.scroll)
 
         #pango.SCALE = 1000
@@ -65,13 +65,12 @@ class TextArea(gtk.DrawingArea):
         #cr.set_font_size(10)
         #cr.move_to(20,21)
         #cr.show_text("test")
-        print "endnof drw scroll", self.scroll
 
     def redraw_canvas(self,scroll):
         """Invalidates the cairo area and 
         updates the pango layout when text
         needs to be redrawn"""
-        print "calling redraw scroll", self.scroll, "reassigned to ", scroll
+
         self.scroll = scroll
 
         self.current_point = list(self.cr.get_current_point())
@@ -102,11 +101,14 @@ class PyViewer():
         # Create a top level window
         self.window = gtk.Window()
         
-        self.window.add_events(gtk.gdk.SCROLL_MASK)
+        #self.window.add_events(gtk.gdk.SCROLL_MASK)
         #self.window.connect("scroll-event", self.do_scroll)
+        
         self.scroll_distance = 0
         self.last_mouse_value = []
         self.window.connect('drag_motion', self.do_drag)
+        self.window.connect('drag_end', self.do_stop_drag)
+
         self.window.drag_dest_set(gtk.DEST_DEFAULT_MOTION,
                                 [("", gtk.TARGET_SAME_APP, 1)],
                                 gtk.gdk.ACTION_PRIVATE)
@@ -168,15 +170,18 @@ class PyViewer():
             dy = self.last_mouse_value[0] - y  
             dt = self.last_mouse_value[1] - t  
             self.last_mouse_value = [y,t]
-            print "filled", self.last_mouse_value, "dy = ", dy
 
-            self.drawing.redraw_canvas(dy)
+            self.drawing.redraw_canvas(dy*2)
         else:
             self.last_mouse_value = [y,t]
-            print "empty", self.last_mouse_value
             self.drawing.redraw_canvas(0)
         return False
         
+    def do_stop_drag(self, widget, context):
+        """Resets the mouse y and t values so they can be re-assigned
+        at the start of the next drag"""
+        self.last_mouse_value = []
+
 
     """
     def do_scroll(self, widget, event):
@@ -213,10 +218,9 @@ class PyViewer():
 
             try: 
                 ifile = open(self.filename, 'r')
-                text = ifile.read().split('\n')
+                self.drawing.text = ifile.read().split('\n')
                 ifile.close()
                 dialog.destroy()
-                self.drawing.text = text
                 self.drawing.redraw_canvas(0)    
             except IOError:
                 pass
