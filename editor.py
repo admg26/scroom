@@ -48,11 +48,13 @@ class TextArea(gtk.DrawingArea):
     def draw(self, width, height):
         """Invokes cairo and pango to draw the text"""
 
-        self.cr.move_to(20, self.current_point[1]+self.scroll)
+        #self.cr.move_to(20, self.current_point[1]+self.scroll)
+        self.cr.move_to(20, 20)
 
         #pango.SCALE = 1000
-        #Set the Pango font
-        desc = pango.FontDescription("sans normal 10")
+        #Set the Pango fonti
+        font_size = 10 + self.scroll
+        desc = pango.FontDescription("sans normal %s" % font_size)
         self.pg.set_font_description(desc)
         self.parse_text()
         self.pg.set_text(self.output_text)
@@ -118,7 +120,8 @@ class PyViewer():
 
 
         self.window.connect('destroy', lambda w: gtk.main_quit())
-        self.window.set_size_request(600, 500)
+        self.window.set_default_size(600, 500)
+        self.window.move(300,300)
 
         #Create a TextArea class instance
         self.drawing = TextArea()
