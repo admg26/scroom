@@ -12,10 +12,15 @@ class TextArea(gtk.DrawingArea):
     def __init__(self):
         super(TextArea, self).__init__()
         self.connect("expose_event", self.do_expose_event)
+        self.set_initial_values()
+
+    def set_initial_values(self):   
         self.text = []
         self.output_text = ""
         self.scroll = 0
+        self.zoom = 0
         self.current_point = [20,20]
+        self.current_font_size = 12
 
     # Handle the expose-event by drawing
     def do_expose_event(self, widget, event):
@@ -47,7 +52,7 @@ class TextArea(gtk.DrawingArea):
         if line_count < 100:
             lines_to_show = line_count 
         
-        self.output_text = '\n'.join(self.text[0:170]) 
+        self.output_text = '\n'.join(self.text[0:200]) 
 
     def draw(self, width, height):
         """
@@ -55,10 +60,11 @@ class TextArea(gtk.DrawingArea):
         """
 
         self.cr.move_to(20, self.current_point[1]+self.scroll)
-
+        self.current_font_size =  max(5, min(self.current_font_size + self.zoom, 12))
         #pango.SCALE = 1000
         #Set the Pango font
-        desc = pango.FontDescription("sans normal 10")
+        desc = pango.FontDescription("sans normal %s" % self.current_font_size)
+        pango.FontDescription.set_size(desc, 1024*30)
         self.pg.set_font_description(desc)
         self.parse_text()
         self.pg.set_text(self.output_text)
@@ -78,7 +84,8 @@ class TextArea(gtk.DrawingArea):
             pango layout when text needs to be redrawn
         """
 
-        self.scroll = scroll
+        self.scroll = scroll*2
+        self.zoom = scroll/20
 
         self.current_point = list(self.cr.get_current_point())
 
@@ -87,6 +94,8 @@ class TextArea(gtk.DrawingArea):
             self.window.invalidate_rect((0,0,w,h), False)
             self.cr = self.window.cairo_create()
             self.cr.update_layout(self.pg)
+
+
 
 class PyViewer():
     ui = '''<ui>
@@ -127,7 +136,9 @@ class PyViewer():
 
 
         self.window.connect('destroy', lambda w: gtk.main_quit())
-        self.window.set_size_request(600, 500)
+    
+        self.window.set_default_size(600, 500)
+        self.window.move(300,300)
 
         #Create a TextArea class instance
         self.drawing = TextArea()
