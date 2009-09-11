@@ -16,10 +16,13 @@ class TextArea(gtk.DrawingArea):
         self.output_text = ""
         self.scroll = 0
         self.current_point = [20,20]
+        self.current_font_size =  10
 
     # Handle the expose-event by drawing
     def do_expose_event(self, widget, event):
-        """Sets up cairo and calls draw() to draw the text"""
+        """
+            Sets up cairo and calls draw() to draw the text
+        """
 
         # Create the cairo context
         self.cr = self.window.cairo_create()
@@ -35,7 +38,9 @@ class TextArea(gtk.DrawingArea):
         self.draw(*self.window.get_size())
 
     def parse_text(self):
-        """Decides what section of text needs to be shown"""
+        """
+            Decides what section of text needs to be shown
+        """
  
         line_count  = range(len(self.text))
         
@@ -46,15 +51,20 @@ class TextArea(gtk.DrawingArea):
         self.output_text = '\n'.join(self.text[0:170]) 
 
     def draw(self, width, height):
-        """Invokes cairo and pango to draw the text"""
+        """
+            Invokes cairo and pango to draw the text
+        """
 
         #self.cr.move_to(20, self.current_point[1]+self.scroll)
         self.cr.move_to(20, 20)
 
         #pango.SCALE = 1000
-        #Set the Pango fonti
-        font_size = 10 + self.scroll
-        desc = pango.FontDescription("sans normal %s" % font_size)
+        #Set the Pango font
+        print "current", self.current_font_size
+        print "scroll", self.scroll
+        self.current_font_size = max(5, min(self.current_font_size + self.scroll, 15))
+
+        desc = pango.FontDescription("sans normal %s" % self.current_font_size)
         self.pg.set_font_description(desc)
         self.parse_text()
         self.pg.set_text(self.output_text)
@@ -69,11 +79,12 @@ class TextArea(gtk.DrawingArea):
         #cr.show_text("test")
 
     def redraw_canvas(self,scroll):
-        """Invalidates the cairo area and 
-        updates the pango layout when text
-        needs to be redrawn"""
+        """
+            Invalidates the cairo area and updates the 
+            pango layout when text needs to be redrawn
+        """
 
-        self.scroll = scroll
+        self.scroll = scroll/20
 
         self.current_point = list(self.cr.get_current_point())
 
@@ -95,7 +106,9 @@ class PyViewer():
     </ui>'''        
     
     def __init__(self):
-        """Set up the window, events and the UIManager"""
+        """
+            Set up the window, events and the UIManager
+        """
         
         __gsignals__ = { "expose-event": "override" }
 
@@ -166,23 +179,27 @@ class PyViewer():
         return
 
     def do_drag(self, widget, context, x, y, t):
-        """Handles the drag event. Causes the
-        canvas to be redrawn"""
+        """
+            Handles the drag event. Causes the canvas to be redrawn
+        """
         
         if self.last_mouse_value:
             dy = self.last_mouse_value[0] - y  
             dt = self.last_mouse_value[1] - t  
             self.last_mouse_value = [y,t]
 
-            self.drawing.redraw_canvas(dy*2)
+            self.drawing.redraw_canvas(dy)
         else:
             self.last_mouse_value = [y,t]
             self.drawing.redraw_canvas(0)
         return False
         
     def do_stop_drag(self, widget, context):
-        """Resets the mouse y and t values so they can be re-assigned
-        at the start of the next drag"""
+        """
+            Resets the mouse y and t values so they can be re-assigned
+            at the start of the next drag
+        """
+        
         self.last_mouse_value = []
 
 
@@ -199,13 +216,17 @@ class PyViewer():
     """
 
     def quit_viewer(self,data=None):
-        """Quits program"""
+        """
+            Quits program
+        """
         
         gtk.main_quit()
     
     def open_file(self, widget, data=None):
-        """Opens a file chooser dialog and returns the filename.
-        Canvas is redrawn if a valid file is opened"""
+        """
+            Opens a file chooser dialog and returns the filename.
+            Canvas is redrawn if a valid file is opened
+        """
         
         dialog = gtk.FileChooserDialog("Open..",
                        None,
