@@ -233,6 +233,7 @@ class PyViewer():
 
 
 if __name__ == '__main__':
+    print "***Mouse drags causes scrolling (No zooming) ***"
     PyViewer()
     gtk.main()
 
