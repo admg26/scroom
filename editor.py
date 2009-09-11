@@ -119,7 +119,7 @@ class PyViewer():
         self.window.connect('drag_end', self.do_stop_drag)
 
         self.window.drag_dest_set(gtk.DEST_DEFAULT_MOTION,
-                                [("", gtk.TARGET_SAME_APP, 1)],
+                [("", gtk.TARGET_SAME_APP, 1)],
                                 gtk.gdk.ACTION_PRIVATE)
         self.window.drag_source_set(gtk.gdk.BUTTON1_MASK,
                                 [("", gtk.TARGET_SAME_APP, 1)],
@@ -181,7 +181,7 @@ class PyViewer():
             dt = self.last_mouse_value[1] - t  
             self.last_mouse_value = [y,t]
 
-            self.drawing.redraw_canvas(dy*2)
+            self.drawing.redraw_canvas(dy)
         else:
             self.last_mouse_value = [y,t]
             self.drawing.redraw_canvas(0)
