@@ -12,9 +12,13 @@ class TextArea(gtk.DrawingArea):
     def __init__(self):
         super(TextArea, self).__init__()
         self.connect("expose_event", self.do_expose_event)
+        self.initialise_values()
+
+    def initialise_values(self):    
         self.text = []
         self.output_text = ""
         self.scroll = 0
+        self.zoom = 0
         self.current_point = [20,20]
         self.current_font_size =  10
 
@@ -55,14 +59,12 @@ class TextArea(gtk.DrawingArea):
             Invokes cairo and pango to draw the text
         """
 
-        #self.cr.move_to(20, self.current_point[1]+self.scroll)
-        self.cr.move_to(20, 20)
+        self.cr.move_to(20, self.current_point[1]+self.scroll)
+        #self.cr.move_to(20, 20)
 
         #pango.SCALE = 1000
         #Set the Pango font
-        print "current", self.current_font_size
-        print "scroll", self.scroll
-        self.current_font_size = max(5, min(self.current_font_size + self.scroll, 15))
+        self.current_font_size = max(5, min(self.current_font_size + self.zoom, 15))
 
         desc = pango.FontDescription("sans normal %s" % self.current_font_size)
         self.pg.set_font_description(desc)
@@ -84,7 +86,8 @@ class TextArea(gtk.DrawingArea):
             pango layout when text needs to be redrawn
         """
 
-        self.scroll = scroll/20
+        self.scroll = scroll*2
+        self.zoom = scroll/30
 
         self.current_point = list(self.cr.get_current_point())
 
@@ -119,7 +122,6 @@ class PyViewer():
         #self.window.add_events(gtk.gdk.SCROLL_MASK)
         #self.window.connect("scroll-event", self.do_scroll)
         
-        self.scroll_distance = 0
         self.last_mouse_value = []
         self.window.connect('drag_motion', self.do_drag)
         self.window.connect('drag_end', self.do_stop_drag)
@@ -221,6 +223,7 @@ class PyViewer():
         """
         
         gtk.main_quit()
+
     
     def open_file(self, widget, data=None):
         """
@@ -245,6 +248,7 @@ class PyViewer():
                 self.drawing.text = ifile.read().split('\n')
                 ifile.close()
                 dialog.destroy()
+                self.drawing.initialise_values()
                 self.drawing.redraw_canvas(0)    
             except IOError:
                 pass
