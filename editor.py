@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from __future__ import division
 import pygtk
 pygtk.require('2.0')
 import gtk, gobject
@@ -15,12 +16,12 @@ class TextArea(gtk.DrawingArea):
         self.set_initial_values()
 
     def set_initial_values(self):   
-        self.text = []
+        #self.text = []
+        self.text = ""
         self.output_text = ""
         self.scroll = 0
-        self.zoom = 0
         self.current_point = [20,20]
-        self.current_font_size = 12
+        self.current_scale = 12
 
     # Handle the expose-event by drawing
     def do_expose_event(self, widget, event):
@@ -34,7 +35,7 @@ class TextArea(gtk.DrawingArea):
         #Create a pango layout
         self.pg = self.cr.create_layout()
 
-         # Restrict Cairo to the exposed area; avoid extra work
+        # Restrict Cairo to the exposed area; avoid extra work
         self.cr.rectangle(event.area.x, event.area.y,
                 event.area.width, event.area.height)
         self.cr.clip()
@@ -54,39 +55,52 @@ class TextArea(gtk.DrawingArea):
         
         self.output_text = '\n'.join(self.text[0:200]) 
 
-    def draw(self, width, height):
+    def draw(self, width, height):        
         """
             Invokes cairo and pango to draw the text
         """
-
+        
         self.cr.move_to(20, self.current_point[1]+self.scroll)
-        self.current_font_size =  max(5, min(self.current_font_size + self.zoom, 12))
-        #pango.SCALE = 1000
-        #Set the Pango font
-        desc = pango.FontDescription("sans normal %s" % self.current_font_size)
-        pango.FontDescription.set_size(desc, 1024*30)
-        self.pg.set_font_description(desc)
-        self.parse_text()
-        self.pg.set_text(self.output_text)
-        #print self.pg.get_pixel_extents()
-        #print "line count " + str(self.pg.get_line_count())
-        #print "pixel size " + str(self.pg.get_pixel_size())
-        #print pango.SCALE
-        #Render text with Cairo
-        self.cr.show_layout(self.pg)
-        #cr.set_font_size(10)
-        #cr.move_to(20,21)
-        #cr.show_text("test")
+        desc = pango.FontDescription("sans normal")
 
-    def redraw_canvas(self,scroll):
+        print "in draw", self.current_scale
+        pango.FontDescription.set_size(desc, int(1024*self.current_scale))
+        
+        self.pg.set_font_description(desc)
+        #self.parse_text()
+        #self.pg.set_text(self.output_text)
+        self.pg.set_text(self.text)
+        
+        self.cr.show_layout(self.pg)
+
+    def redraw_canvas(self, dy, dt):
         """
             Invalidates the cairo area and updates the 
             pango layout when text needs to be redrawn
         """
+            
+        self.scroll = dy*2
+        
+        #maximum speed above which scale is no longer decreased
+        max_speed = 2
+        #minimum speed below which scale is not increased
+        min_speed = 1
 
-        self.scroll = scroll*2
-        self.zoom = scroll/20
+        try:
+            speed = abs(dy/dt)
+            if speed >= min_speed and speed <= max_speed:
+                self.current_scale = (12 - 5) * (speed - min_speed) / (max_speed - min_speed) + 5
+                print self.current_scale
+            elif speed < min_speed:
+                self.current_scale = 12
+                print self.current_scale
+            else:
+                self.current_scale = 5
+                print self.current_scale
 
+        except ZeroDivisionError:
+            pass
+        
         self.current_point = list(self.cr.get_current_point())
 
         if self.window:
@@ -116,11 +130,10 @@ class PyViewer():
         __gsignals__ = { "expose-event": "override" }
 
         self.filename = ""
+        
         # Create a top level window
         self.window = gtk.Window()
         
-        #self.window.add_events(gtk.gdk.SCROLL_MASK)
-        #self.window.connect("scroll-event", self.do_scroll)
         
         self.scroll_distance = 0
         self.last_mouse_value = []
@@ -163,10 +176,6 @@ class PyViewer():
                                  ('Quit', gtk.STOCK_QUIT, '_Quit', None, None, self.quit_viewer),
                                  ('File', None, '_File')])
        
-        #actiongroup.get_action('Quit').connect('activate',self.quit_viewer)
-        #actiongroup.get_action('Quit').set_property('short-label', '_Quit')
-        #actiongroup.get_action('Open').set_property('short-label', '_Open')
-
         # Add the actiongroup to the uimanager
         uimanager.insert_action_group(actiongroup, 0)
 
@@ -180,7 +189,10 @@ class PyViewer():
         vbox.pack_start(self.drawing)   
 
         self.window.show_all()
+
         return
+
+
 
     def do_drag(self, widget, context, x, y, t):
         """
@@ -188,37 +200,31 @@ class PyViewer():
         """
         
         if self.last_mouse_value:
-            dy = self.last_mouse_value[0] - y  
-            dt = self.last_mouse_value[1] - t  
+        
+            dy = self.last_mouse_value[0] - y
+            dt = t - self.last_mouse_value[1]
             self.last_mouse_value = [y,t]
-
-            self.drawing.redraw_canvas(dy)
+            self.drawing.redraw_canvas(dy, dt)
+        
         else:
+            
             self.last_mouse_value = [y,t]
-            self.drawing.redraw_canvas(0)
+            self.drawing.redraw_canvas(0, 0)
+        
         return False
         
+
+
     def do_stop_drag(self, widget, context):
         """
             Resets the mouse y and t values so they can be re-assigned
             at the start of the next drag
         """
-        
+     
         self.last_mouse_value = []
+    
 
-
-    """
-    def do_scroll(self, widget, event):
-        if event.direction == gtk.gdk.SCROLL_UP:
-            print "Scroll up"
-            self.scroll_distance = -1
-            self.drawing.redraw_canvas(self.scroll_distance)
-        else:
-            print "Scroll down"
-            self.scroll_distance = 1
-            self.drawing.redraw_canvas(self.scroll_distance)
-    """
-
+    
     def quit_viewer(self,data=None):
         """
             Quits program
@@ -226,6 +232,8 @@ class PyViewer():
         
         gtk.main_quit()
     
+
+
     def open_file(self, widget, data=None):
         """
             Opens a file chooser dialog and returns the filename.
@@ -240,16 +248,19 @@ class PyViewer():
         dialog.set_default_response(gtk.RESPONSE_OK)
 
         response = dialog.run()
+        self.drawing.set_initial_values()
+        self.drawing.cr.move_to(20,20)
         if response == gtk.RESPONSE_OK:
             self.filename = dialog.get_filename()   
             self.window.set_title("Python Viewer - " + self.filename )
 
             try: 
                 ifile = open(self.filename, 'r')
-                self.drawing.text = ifile.read().split('\n')
+                #self.drawing.text = ifile.read().split('\n')
+                self.drawing.text = ifile.read()
                 ifile.close()
                 dialog.destroy()
-                self.drawing.redraw_canvas(0)    
+                self.drawing.redraw_canvas(0, 0)    
             except IOError:
                 pass
 
@@ -261,7 +272,6 @@ class PyViewer():
 
 
 if __name__ == '__main__':
-    print "***Mouse drags causes scrolling (No zooming) ***"
     PyViewer()
     gtk.main()
 
