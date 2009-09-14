@@ -63,7 +63,6 @@ class TextArea(gtk.DrawingArea):
         self.cr.move_to(20, self.current_point[1]+self.scroll)
         desc = pango.FontDescription("sans normal")
 
-        print "in draw", self.current_scale
         pango.FontDescription.set_size(desc, int(1024*self.current_scale))
         
         self.pg.set_font_description(desc)
@@ -73,34 +72,14 @@ class TextArea(gtk.DrawingArea):
         
         self.cr.show_layout(self.pg)
 
-    def redraw_canvas(self, dy, dt):
+    def redraw_canvas(self, dy):
         """
             Invalidates the cairo area and updates the 
             pango layout when text needs to be redrawn
         """
             
-        self.scroll = dy*2
-        
-        #maximum speed above which scale is no longer decreased
-        max_speed = 2
-        #minimum speed below which scale is not increased
-        min_speed = 1
+        self.scroll = dy/10
 
-        try:
-            speed = abs(dy/dt)
-            if speed >= min_speed and speed <= max_speed:
-                self.current_scale = (12 - 5) * (speed - min_speed) / (max_speed - min_speed) + 5
-                print self.current_scale
-            elif speed < min_speed:
-                self.current_scale = 12
-                print self.current_scale
-            else:
-                self.current_scale = 5
-                print self.current_scale
-
-        except ZeroDivisionError:
-            pass
-        
         self.current_point = list(self.cr.get_current_point())
 
         if self.window:
@@ -127,7 +106,7 @@ class PyViewer():
             Set up the window, events and the UIManager
         """
         
-        __gsignals__ = { "expose-event": "override" }
+        __gsignals__ = { "expose-event": None }
 
         self.filename = ""
         
@@ -136,12 +115,13 @@ class PyViewer():
         
         
         self.scroll_distance = 0
-        self.last_mouse_value = []
+        self.mouse_click_point = 0
+
         self.window.connect('drag_motion', self.do_drag)
         self.window.connect('drag_end', self.do_stop_drag)
 
         self.window.drag_dest_set(gtk.DEST_DEFAULT_MOTION,
-                [("", gtk.TARGET_SAME_APP, 1)],
+                                [("", gtk.TARGET_SAME_APP, 1)],
                                 gtk.gdk.ACTION_PRIVATE)
         self.window.drag_source_set(gtk.gdk.BUTTON1_MASK,
                                 [("", gtk.TARGET_SAME_APP, 1)],
@@ -193,26 +173,23 @@ class PyViewer():
         return
 
 
+    def continuous_scroll(self, context):
+     
+        #dy = self.mouse_click_point - y
+        dy = -20
+        self.drawing.redraw_canvas(dy)
+        print context.drop_finish()
+        return True
 
     def do_drag(self, widget, context, x, y, t):
         """
             Handles the drag event. Causes the canvas to be redrawn
         """
-        
-        if self.last_mouse_value:
-        
-            dy = self.last_mouse_value[0] - y
-            dt = t - self.last_mouse_value[1]
-            self.last_mouse_value = [y,t]
-            self.drawing.redraw_canvas(dy, dt)
-        
-        else:
-            
-            self.last_mouse_value = [y,t]
-            self.drawing.redraw_canvas(0, 0)
-        
-        return False
-        
+
+        #if self.mouse_click_point:
+        gobject.timeout_add(100, self.continuous_scroll, context)
+        #else:
+        #    self.mouse_click_point = y
 
 
     def do_stop_drag(self, widget, context):
@@ -221,7 +198,7 @@ class PyViewer():
             at the start of the next drag
         """
      
-        self.last_mouse_value = []
+        self.mouse_click_point = 0
     
 
     
@@ -250,6 +227,7 @@ class PyViewer():
         response = dialog.run()
         self.drawing.set_initial_values()
         self.drawing.cr.move_to(20,20)
+
         if response == gtk.RESPONSE_OK:
             self.filename = dialog.get_filename()   
             self.window.set_title("Python Viewer - " + self.filename )
@@ -260,7 +238,7 @@ class PyViewer():
                 self.drawing.text = ifile.read()
                 ifile.close()
                 dialog.destroy()
-                self.drawing.redraw_canvas(0, 0)    
+                self.drawing.redraw_canvas(0)    
             except IOError:
                 pass
 
