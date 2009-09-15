@@ -80,10 +80,15 @@ class TextArea(gtk.DrawingArea):
             pango layout when text needs to be redrawn
         """
         #self.scroll = dy/20
+        if dy >= 0:
+            sign = 1
+        else:
+            sign = -1
+
 
         if abs(dy) > 100 and abs(dy) < 250:
             self.zoom = 12 - ((12 - 8)* (abs(dy) - 100) / (250 - 100))
-            self.scroll = 2/self.zoom
+            self.scroll = sign * 2/self.zoom
 
         elif abs(dy) <= 100:
             self.zoom = 12
@@ -91,7 +96,7 @@ class TextArea(gtk.DrawingArea):
 
         else:
             self.zoom = 8
-            self.scroll = 2/self.zoom
+            self.scroll = sign * 2/self.zoom
 
         self.current_point = list(self.cr.get_current_point())
 
