@@ -6,7 +6,7 @@ pygtk.require('2.0')
 import gtk, gobject
 import cairo
 import pango
-
+import time
 
 class TextArea(gtk.DrawingArea):
    
@@ -20,6 +20,8 @@ class TextArea(gtk.DrawingArea):
         self.text = ""
         self.output_text = ""
         self.scroll = 0
+        self.speed = 0
+        self.zoom = 12
         self.current_point = [20,20]
         self.current_scale = 12
 
@@ -59,11 +61,11 @@ class TextArea(gtk.DrawingArea):
         """
             Invokes cairo and pango to draw the text
         """
-        
+
         self.cr.move_to(20, self.current_point[1] + self.scroll)
         desc = pango.FontDescription("sans normal")
 
-        pango.FontDescription.set_size(desc, int(1024*self.current_scale))
+        pango.FontDescription.set_size(desc, int(1024*self.zoom))
         
         self.pg.set_font_description(desc)
         #self.parse_text()
@@ -77,8 +79,19 @@ class TextArea(gtk.DrawingArea):
             Invalidates the cairo area and updates the 
             pango layout when text needs to be redrawn
         """
-            
-        self.scroll = dy/20
+        #self.scroll = dy/20
+
+        if abs(dy) > 100 and abs(dy) < 250:
+            self.zoom = 12 - ((12 - 8)* (abs(dy) - 100) / (250 - 100))
+            self.scroll = 2/self.zoom
+
+        elif abs(dy) <= 100:
+            self.zoom = 12
+            self.scroll = dy * 12 / 100 
+
+        else:
+            self.zoom = 8
+            self.scroll = 2/self.zoom
 
         self.current_point = list(self.cr.get_current_point())
 
@@ -123,14 +136,14 @@ class PyViewer():
         self.window.connect('drag_motion', self.drag_motion)
         self.window.connect('drag_end', self.stop_drag_motion)
     
-        self.window.drag_dest_set(gtk.DEST_DEFAULT_MOTION,
-                                [("", gtk.TARGET_SAME_APP, 1)],
-                                gtk.gdk.ACTION_PRIVATE)
         self.window.drag_source_set(gtk.gdk.BUTTON1_MASK,
                                 [("", gtk.TARGET_SAME_APP, 1)],
                                 gtk.gdk.ACTION_PRIVATE)
 
-
+        self.window.drag_dest_set(gtk.DEST_DEFAULT_MOTION,
+                                [("", gtk.TARGET_SAME_APP, 1)],
+                                gtk.gdk.ACTION_PRIVATE)
+     
         self.window.connect('destroy', lambda w: gtk.main_quit())
     
         self.window.set_default_size(600, 500)
@@ -178,8 +191,8 @@ class PyViewer():
 
     def continuous_scroll(self, context):
      
-        #dy = self.mouse_click_point - y
         self.drawing.redraw_canvas(self.dy)
+        
         return True
 
     def start_refresh(self, widget, context):
@@ -193,8 +206,6 @@ class PyViewer():
         
         if self.mouse_click_point:
             self.dy = self.mouse_click_point - y
-            #self.drawing.redraw_canvas(dy)
-        
         else:
             self.mouse_click_point = y
 
@@ -206,7 +217,6 @@ class PyViewer():
         """
         gobject.source_remove(self.source_id)
         self.mouse_click_point = 0
-    
 
     
     def quit_viewer(self,data=None):
@@ -224,8 +234,7 @@ class PyViewer():
             Canvas is redrawn if a valid file is opened
         """
         
-        dialog = gtk.FileChooserDialog("Open..",
-                       None,
+        dialog = gtk.FileChooserDialog("Open..",None,
                        gtk.FILE_CHOOSER_ACTION_OPEN,
                        (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
                         gtk.STOCK_OPEN, gtk.RESPONSE_OK))
