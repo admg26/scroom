@@ -60,7 +60,7 @@ class TextArea(gtk.DrawingArea):
             Invokes cairo and pango to draw the text
         """
         
-        self.cr.move_to(20, self.current_point[1]+self.scroll)
+        self.cr.move_to(20, self.current_point[1] + self.scroll)
         desc = pango.FontDescription("sans normal")
 
         pango.FontDescription.set_size(desc, int(1024*self.current_scale))
@@ -78,7 +78,7 @@ class TextArea(gtk.DrawingArea):
             pango layout when text needs to be redrawn
         """
             
-        self.scroll = dy/10
+        self.scroll = dy/20
 
         self.current_point = list(self.cr.get_current_point())
 
@@ -109,7 +109,9 @@ class PyViewer():
         __gsignals__ = { "expose-event": None }
 
         self.filename = ""
-        
+        self.source_id = 0
+        self.dy = 0
+
         # Create a top level window
         self.window = gtk.Window()
         
@@ -117,9 +119,10 @@ class PyViewer():
         self.scroll_distance = 0
         self.mouse_click_point = 0
 
-        self.window.connect('drag_motion', self.do_drag)
-        self.window.connect('drag_end', self.do_stop_drag)
-
+        self.window.connect('drag-begin', self.start_refresh)
+        self.window.connect('drag_motion', self.drag_motion)
+        self.window.connect('drag_end', self.stop_drag_motion)
+    
         self.window.drag_dest_set(gtk.DEST_DEFAULT_MOTION,
                                 [("", gtk.TARGET_SAME_APP, 1)],
                                 gtk.gdk.ACTION_PRIVATE)
@@ -176,28 +179,32 @@ class PyViewer():
     def continuous_scroll(self, context):
      
         #dy = self.mouse_click_point - y
-        dy = -20
-        self.drawing.redraw_canvas(dy)
-        print context.drop_finish()
+        self.drawing.redraw_canvas(self.dy)
         return True
 
-    def do_drag(self, widget, context, x, y, t):
+    def start_refresh(self, widget, context):
+        self.source_id = gobject.timeout_add(40, self.continuous_scroll, context)
+
+
+    def drag_motion(self, widget, context, x, y, t):
         """
             Handles the drag event. Causes the canvas to be redrawn
         """
+        
+        if self.mouse_click_point:
+            self.dy = self.mouse_click_point - y
+            #self.drawing.redraw_canvas(dy)
+        
+        else:
+            self.mouse_click_point = y
 
-        #if self.mouse_click_point:
-        gobject.timeout_add(100, self.continuous_scroll, context)
-        #else:
-        #    self.mouse_click_point = y
 
-
-    def do_stop_drag(self, widget, context):
+    def stop_drag_motion(self, widget, context):
         """
             Resets the mouse y and t values so they can be re-assigned
             at the start of the next drag
         """
-     
+        gobject.source_remove(self.source_id)
         self.mouse_click_point = 0
     
 
