@@ -85,18 +85,17 @@ class TextArea(gtk.DrawingArea):
         else:
             sign = -1
 
-
-        if abs(dy) > 100 and abs(dy) < 250:
-            self.zoom = 12 - ((12 - 8)* (abs(dy) - 100) / (250 - 100))
-            self.scroll = sign * 2/self.zoom
+        if abs(dy) > 100 and abs(dy) < 350:
+            self.zoom =12 - pow(4,(abs(dy) - 100) / (350 - 100))
+            self.scroll = sign * 12 * 12 / self.zoom
 
         elif abs(dy) <= 100:
             self.zoom = 12
-            self.scroll = dy * 12 / 100 
+            self.scroll =dy * 12 / 100 
 
         else:
             self.zoom = 8
-            self.scroll = sign * 2/self.zoom
+            self.scroll = sign * 18
 
         self.current_point = list(self.cr.get_current_point())
 
@@ -151,8 +150,8 @@ class PyViewer():
      
         self.window.connect('destroy', lambda w: gtk.main_quit())
     
-        self.window.set_default_size(600, 500)
-        self.window.move(300,300)
+        self.window.set_default_size(600,900)
+        self.window.move(300,100)
 
         #Create a TextArea class instance
         self.drawing = TextArea()
@@ -201,7 +200,7 @@ class PyViewer():
         return True
 
     def start_refresh(self, widget, context):
-        self.source_id = gobject.timeout_add(40, self.continuous_scroll, context)
+        self.source_id = gobject.timeout_add(38, self.continuous_scroll, context)
 
 
     def drag_motion(self, widget, context, x, y, t):
