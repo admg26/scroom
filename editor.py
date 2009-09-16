@@ -79,23 +79,25 @@ class TextArea(gtk.DrawingArea):
             Invalidates the cairo area and updates the 
             pango layout when text needs to be redrawn
         """
-        #self.scroll = dy/20
+        self.scroll = dy/20
         if dy >= 0:
             sign = 1
         else:
             sign = -1
 
+        """
         if abs(dy) > 100 and abs(dy) < 350:
             self.zoom =12 - pow(4,(abs(dy) - 100) / (350 - 100))
             self.scroll = sign * 12 * 12 / self.zoom
 
         elif abs(dy) <= 100:
             self.zoom = 12
-            self.scroll =dy * 12 / 100 
+            self.scroll = dy * 12 / 100 
 
         else:
             self.zoom = 8
             self.scroll = sign * 18
+        """
 
         self.current_point = list(self.cr.get_current_point())
 
