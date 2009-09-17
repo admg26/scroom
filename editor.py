@@ -76,8 +76,6 @@ class TextArea(gtk.DrawingArea):
         #self.pg.set_text(self.text)
 
         
-        pango_end_of_text = self.pg.get_pixel_extents()
-        self.cr.move_to(20, -(pango_end_of_text[1][3]/2 - 20))
         print "in draw, current point cairo", self.cr.get_current_point()
        
         self.cr.show_layout(self.pg)
@@ -117,11 +115,11 @@ class TextArea(gtk.DrawingArea):
 
         print self.current_point[1] , -(pango_end_of_text[1][3]/2 - 20)
 
-        if self.text and self.current_point[1] < -(pango_end_of_text[1][3]/2):
-            print "true-------------------------------------------------------------------------------------------------------------------------------"
+        if self.text and self.current_point[1] < -(pango_end_of_text[1][3]/2 - 20):
+            buffer = -(pango_end_of_text[1][3]/2 - 20) - self.current_point[1]
             self.min_line += 50
             self.parse_text()
-            self.current_point = [20,20]
+            self.current_point = [20,20 - buffer]
             self.scroll = 0
 
         if self.window:
