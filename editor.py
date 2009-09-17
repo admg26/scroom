@@ -25,6 +25,7 @@ class TextArea(gtk.DrawingArea):
         self.current_point = [20,20]
         self.current_scale = 12
         self.min_line = 0
+        self.lines = 100 
 
     # Handle the expose-event by drawing
     def do_expose_event(self, widget, event):
@@ -49,38 +50,40 @@ class TextArea(gtk.DrawingArea):
         """
             Decides what section of text needs to be shown
         """
- 
+        """
+        if self.min_line == end_count[0] * 100:
+            self.lines = end_count[1]
+            self.scroll = 0
+        """
         #line_count  = range(len(self.text))
         
         #lines_to_show = 100
         #if line_count < 100:
         #    lines_to_show = line_count 
         
-        self.output_text = '\n'.join(self.text[self.min_line:(self.min_line + 100)]) 
-        print "in parse text", self.min_line
+        self.output_text = '\n'.join(self.text[self.min_line:(self.min_line + self.lines)]) 
+        #print "in parse text", self.min_line
 
     def draw(self, width, height):        
         """
             Invokes cairo and pango to draw the text
         """
         
-        self.cr.move_to(20, self.current_point[1] + self.scroll)
+        self.cr.move_to(20, self.current_point[1] -  self.scroll)
         desc = pango.FontDescription("sans normal")
 
         pango.FontDescription.set_size(desc, int(1024*self.zoom))
         
         self.pg.set_font_description(desc)
         
-        self.parse_text()
+        #self.parse_text()
         self.pg.set_text(self.output_text)
         #self.pg.set_text(self.text)
 
         
-        print "in draw, current point cairo", self.cr.get_current_point()
+        #print "in draw, current point cairo", self.cr.get_current_point()
        
         self.cr.show_layout(self.pg)
-
-
 
 
     def redraw_canvas(self, dy):
@@ -89,14 +92,34 @@ class TextArea(gtk.DrawingArea):
             pango layout when text needs to be redrawn
         """
         self.scroll = dy/20
+          
+
+        self.current_point = list(self.cr.get_current_point())
+
+        pango_end_of_text = self.pg.get_pixel_extents()
+
         if dy >= 0:
             sign = 1
+            if self.text and self.current_point[1] < -(pango_end_of_text[1][3]/2 - 20):
+                buffer = -(pango_end_of_text[1][3]/2 - 20) - self.current_point[1]
+                self.min_line += 50
+                self.current_point = [20,20 - buffer]
+                self.parse_text()
+                self.scroll = 0
+        
         else:
             sign = -1
+            if self.text and self.current_point[1] > 0:
+                buffer =  self.current_point[1]
+                self.min_line -= 50
+                self.current_point = [20, -(pango_end_of_text[1][3]/2) + buffer]
+                self.parse_text()
+                self.scroll = 0
+        
 
         """
         if abs(dy) > 100 and abs(dy) < 350:
-            self.zoom =12 - pow(4,(abs(dy) - 100) / (350 - 100))
+            self.zoom = 12 - pow(2,(abs(dy) - 100) / (350 - 100))
             self.scroll = sign * 12 * 12 / self.zoom
 
         elif abs(dy) <= 100:
@@ -104,23 +127,9 @@ class TextArea(gtk.DrawingArea):
             self.scroll = dy * 12 / 100 
 
         else:
-            self.zoom = 8
+            self.zoom = 10
             self.scroll = sign * 18
         """
-
-        self.current_point = list(self.cr.get_current_point())
-
-        pango_end_of_text = self.pg.get_pixel_extents()
-        window_size = self.window.get_size()
-
-        print self.current_point[1] , -(pango_end_of_text[1][3]/2 - 20)
-
-        if self.text and self.current_point[1] < -(pango_end_of_text[1][3]/2 - 20):
-            buffer = -(pango_end_of_text[1][3]/2 - 20) - self.current_point[1]
-            self.min_line += 50
-            self.parse_text()
-            self.current_point = [20,20 - buffer]
-            self.scroll = 0
 
         if self.window:
             x, y, w, h = self.get_allocation()
@@ -128,7 +137,7 @@ class TextArea(gtk.DrawingArea):
             self.cr = self.window.cairo_create()
             self.cr.update_layout(self.pg)
         
-        print "redraw"
+        #print "redraw"
         
        
 
@@ -145,6 +154,7 @@ class PyViewer():
     </ui>'''        
     
     def __init__(self):
+                
         """
             Set up the window, events and the UIManager
         """
@@ -235,7 +245,7 @@ class PyViewer():
         """
         
         if self.mouse_click_point:
-            self.dy = self.mouse_click_point - y
+            self.dy = y - self.mouse_click_point
         else:
             self.mouse_click_point = y
 
@@ -284,6 +294,14 @@ class PyViewer():
                 #self.drawing.text = ifile.read()
                 ifile.close()
                 dialog.destroy()
+                
+                line_count = len(self.drawing.text)
+                
+                end_count = [(line_count // 100),(line_count % 100)]
+
+
+                self.drawing.parse_text()
+
                 self.drawing.redraw_canvas(0)    
             except IOError:
                 pass
