@@ -24,7 +24,7 @@ class TextArea(gtk.DrawingArea):
         self.zoom = 12
         self.current_point = [20,20]
         self.current_scale = 12
-        self.min_line = 100
+        self.min_line = 0
 
     # Handle the expose-event by drawing
     def do_expose_event(self, widget, event):
@@ -57,6 +57,7 @@ class TextArea(gtk.DrawingArea):
         #    lines_to_show = line_count 
         
         self.output_text = '\n'.join(self.text[self.min_line:(self.min_line + 100)]) 
+        print "in parse text", self.min_line
 
     def draw(self, width, height):        
         """
@@ -65,7 +66,6 @@ class TextArea(gtk.DrawingArea):
         
         self.cr.move_to(20, self.current_point[1] + self.scroll)
         desc = pango.FontDescription("sans normal")
-        print self.cr.get_current_point()
 
         pango.FontDescription.set_size(desc, int(1024*self.zoom))
         
@@ -74,9 +74,16 @@ class TextArea(gtk.DrawingArea):
         self.parse_text()
         self.pg.set_text(self.output_text)
         #self.pg.set_text(self.text)
+
         
-        
+        pango_end_of_text = self.pg.get_pixel_extents()
+        self.cr.move_to(20, -(pango_end_of_text[1][3]/2 - 20))
+        print "in draw, current point cairo", self.cr.get_current_point()
+       
         self.cr.show_layout(self.pg)
+
+
+
 
     def redraw_canvas(self, dy):
         """
@@ -108,23 +115,24 @@ class TextArea(gtk.DrawingArea):
         pango_end_of_text = self.pg.get_pixel_extents()
         window_size = self.window.get_size()
 
+        print self.current_point[1] , -(pango_end_of_text[1][3]/2 - 20)
+
+        if self.text and self.current_point[1] < -(pango_end_of_text[1][3]/2):
+            print "true-------------------------------------------------------------------------------------------------------------------------------"
+            self.min_line += 50
+            self.parse_text()
+            self.current_point = [20,20]
+            self.scroll = 0
 
         if self.window:
             x, y, w, h = self.get_allocation()
             self.window.invalidate_rect((0,0,w,h), False)
             self.cr = self.window.cairo_create()
             self.cr.update_layout(self.pg)
-
-        print pango_end_of_text[1][3] - self.current_point[1] # window_size[1]
         
+        print "redraw"
         
-        if self.current_point[1] + pango_end_of_text[1][3] < window_size[1] + 92:
-            print "true"
-            self.min_line += 50
-            self.parse_text()
-            self.current_point = [20,20]
-            self.scroll = 0
-        
+       
 
 
 class PyViewer():
