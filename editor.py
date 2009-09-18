@@ -11,13 +11,17 @@ import time
 class TextArea(gtk.DrawingArea):
    
     def __init__(self):
+
         super(TextArea, self).__init__()
         self.connect("expose_event", self.do_expose_event)
         self.set_initial_values()
 
-    def set_initial_values(self):   
+    def set_initial_values(self): 
+        """
+            Resets defaults values when new file is opened
+        """
+
         self.text = []
-        #self.text = ""
         self.output_text = ""
         self.scroll = 0
         self.speed = 0
@@ -50,11 +54,13 @@ class TextArea(gtk.DrawingArea):
         """
             Decides what section of text needs to be shown
         """
+
         """
         if self.min_line == end_count[0] * 100:
             self.lines = end_count[1]
             self.scroll = 0
         """
+
         #line_count  = range(len(self.text))
         
         #lines_to_show = 100
@@ -63,6 +69,7 @@ class TextArea(gtk.DrawingArea):
         
         self.output_text = '\n'.join(self.text[self.min_line:(self.min_line + self.lines)]) 
         #print "in parse text", self.min_line
+
 
     def draw(self, width, height):        
         """
@@ -91,8 +98,8 @@ class TextArea(gtk.DrawingArea):
             Invalidates the cairo area and updates the 
             pango layout when text needs to be redrawn
         """
+        
         self.scroll = dy/20
-          
 
         self.current_point = list(self.cr.get_current_point())
 
@@ -230,12 +237,19 @@ class PyViewer():
 
 
     def continuous_scroll(self, context):
-     
+        """
+            Calls redraw_cavas() and returns True
+        """
+
         self.drawing.redraw_canvas(self.dy)
         
         return True
 
     def start_refresh(self, widget, context):
+        """
+            Calls continuous_scroll every 38 ms until drag stops and the gobject.source is removed
+        """
+
         self.source_id = gobject.timeout_add(38, self.continuous_scroll, context)
 
 
