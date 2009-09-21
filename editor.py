@@ -30,6 +30,9 @@ class TextArea(gtk.DrawingArea):
         self.current_scale = 12
         self.min_line = 0
         self.lines = 100 
+        self.end_count = []
+        self.end_of_file = 0
+
 
     # Handle the expose-event by drawing
     def do_expose_event(self, widget, event):
@@ -56,19 +59,12 @@ class TextArea(gtk.DrawingArea):
         """
 
         """
-        if self.min_line == end_count[0] * 100:
-            self.lines = end_count[1]
-            self.scroll = 0
+        if self.min_line == self.end_count[0] * 100:
+            self.lines = self.end_count[1]
+            self.end_of_file =1
         """
 
-        #line_count  = range(len(self.text))
-        
-        #lines_to_show = 100
-        #if line_count < 100:
-        #    lines_to_show = line_count 
-        
         self.output_text = '\n'.join(self.text[self.min_line:(self.min_line + self.lines)]) 
-        #print "in parse text", self.min_line
 
 
     def draw(self, width, height):        
@@ -76,20 +72,22 @@ class TextArea(gtk.DrawingArea):
             Invokes cairo and pango to draw the text
         """
         
-        self.cr.move_to(20, self.current_point[1] -  self.scroll)
+        self.cr.move_to(20, self.current_point[1] - self.scroll)
         desc = pango.FontDescription("sans normal")
 
         pango.FontDescription.set_size(desc, int(1024*self.zoom))
-        
-        self.pg.set_font_description(desc)
-        
-        #self.parse_text()
-        self.pg.set_text(self.output_text)
-        #self.pg.set_text(self.text)
 
+
+        attr = pango.AttrSize(8000, 0, -1)
+
+        attrlist = pango.AttrList()
+        attrlist.insert(attr)
+
+        self.pg.set_font_description(desc)
+        self.pg.set_attributes(attrlist)
+        self.pg.set_text(self.output_text)
         
-        #print "in draw, current point cairo", self.cr.get_current_point()
-       
+
         self.cr.show_layout(self.pg)
 
 
@@ -98,12 +96,13 @@ class TextArea(gtk.DrawingArea):
             Invalidates the cairo area and updates the 
             pango layout when text needs to be redrawn
         """
-        
+       
         self.scroll = dy/20
 
         self.current_point = list(self.cr.get_current_point())
 
         pango_end_of_text = self.pg.get_pixel_extents()
+
 
         if dy >= 0:
             sign = 1
@@ -143,10 +142,6 @@ class TextArea(gtk.DrawingArea):
             self.window.invalidate_rect((0,0,w,h), False)
             self.cr = self.window.cairo_create()
             self.cr.update_layout(self.pg)
-        
-        #print "redraw"
-        
-       
 
 
 class PyViewer():
@@ -311,8 +306,7 @@ class PyViewer():
                 
                 line_count = len(self.drawing.text)
                 
-                end_count = [(line_count // 100),(line_count % 100)]
-
+                self.drawing.end_count = [(line_count // 100),(line_count % 100)]
 
                 self.drawing.parse_text()
 
