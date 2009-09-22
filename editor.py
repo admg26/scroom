@@ -31,8 +31,13 @@ class TextArea(gtk.DrawingArea):
         self.min_line = 0
         self.lines = 100 
         self.end_count = []
-        self.end_of_file = 0
         self.indent = 0
+
+        self.min_text = 0
+        self.max_text = 0
+
+        self.min_cairo = 20
+        self.max_cairo = 0
 
 
     # Handle the expose-event by drawing
@@ -117,13 +122,15 @@ class TextArea(gtk.DrawingArea):
         self.output_text = '\n'.join(self.text[self.min_line:(self.min_line + self.lines)]) 
 
 
+    def is_on_screen(self):
+        pass
 
     def draw(self, width, height):        
         """
             Invokes cairo and pango to draw the text
         """
         
-        self.cr.move_to(20, self.current_point[1] - self.scroll)
+        self.cr.move_to(20, self.min_cairo)
         desc = pango.FontDescription("sans normal")
 
         pango.FontDescription.set_size(desc, int(1024*self.zoom))
@@ -135,10 +142,20 @@ class TextArea(gtk.DrawingArea):
 
         self.pg.set_font_description(desc)
         self.pg.set_attributes(attrlist)
-        self.pg.set_text(self.output_text)
+        
+        y = 20
+        window_size= self.window.get_size()
 
+        self.max_text = window_size[1]//20 + 1
 
-        self.cr.show_layout(self.pg)
+        if self.text:
+            for l in range(self.min_text, self.max_text):
+                self.pg.set_text(self.text[l])
+                self.cr.show_layout(self.pg)
+                y += 20
+                self.min_cairo = y - self.scroll
+                self.cr.move_to(20, self.min_cairo)
+
 
 
     def redraw_canvas(self, dy):
@@ -147,13 +164,18 @@ class TextArea(gtk.DrawingArea):
             pango layout when text needs to be redrawn
         """
        
-        self.scroll = dy/20
-
+        self.scroll = dy/10
+        print self.scroll
         self.current_point = list(self.cr.get_current_point())
 
         pango_end_of_text = self.pg.get_pixel_extents()
 
+        if self.min_cairo < -40:
+            self.min.cairo = 20 
+            self.min_text += 3 
+            self.max_text += 3
 
+        """
         if dy >= 0:
             sign = 1
             if self.text and self.current_point[1] < -(pango_end_of_text[1][3]/2 - 20):
@@ -171,9 +193,7 @@ class TextArea(gtk.DrawingArea):
                 self.current_point = [20, -(pango_end_of_text[1][3]/2) + buffer]
                 self.parse_text()
                 self.scroll = 0
-        
-
-        """
+       
         if abs(dy) > 100 and abs(dy) < 350:
             self.zoom = 12 - pow(2,(abs(dy) - 100) / (350 - 100))
             self.scroll = sign * 12 * 12 / self.zoom
