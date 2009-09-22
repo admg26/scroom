@@ -32,6 +32,7 @@ class TextArea(gtk.DrawingArea):
         self.lines = 100 
         self.end_count = []
         self.end_of_file = 0
+        self.indent = 0
 
 
     # Handle the expose-event by drawing
@@ -42,7 +43,7 @@ class TextArea(gtk.DrawingArea):
 
         # Create the cairo context
         self.cr = self.window.cairo_create()
-       
+         
         #Create a pango layout
         self.pg = self.cr.create_layout()
 
@@ -52,6 +53,24 @@ class TextArea(gtk.DrawingArea):
         self.cr.clip()
 
         self.draw(*self.window.get_size())
+
+    def indentation(self, text):
+        tab = text.rfind(' '*4)
+        if tab != -1:
+            print "tabs: ", tab%4, tab//4 + 1, self.indent
+            if tab%4 == 0 and tab//4 + 1 == self.indent:
+                print "True"
+                return True
+
+            else:
+                self.indent = tab//4 + 1
+                print "False"
+                return False
+
+        else:
+            print "True"
+            return True
+
 
     def parse_text(self):
         """
@@ -63,8 +82,40 @@ class TextArea(gtk.DrawingArea):
             self.lines = self.end_count[1]
             self.end_of_file =1
         """
+       
+        
+        char_index = []
+        indent = 0
+        line_count = 0
+        line_min = 0
+        in_block = 1
+        char_min = 0
+        char_max = 0
 
+        while line_count <= 20:
+            print self.text[line_count], self.indent
+        
+            if self.indentation(self.text[line_count]): 
+                line_count += 1 
+                print "lc", line_count
+
+            else:
+                print "char min and max;", char_min, char_max
+                print "line min and count", line_min, line_count
+                char_max += len('\n'.join(self.text[line_min:line_count]))
+                print "charmax", char_max
+                char_index.append([self.indent, line_min, line_count, char_min, char_max])
+                char_max += 1
+                char_min = char_max
+
+                line_min = line_count 
+            
+        
+        print line_count, char_index
+        print "total char", len('\n'.join(self.text[0:20]))
+        
         self.output_text = '\n'.join(self.text[self.min_line:(self.min_line + self.lines)]) 
+
 
 
     def draw(self, width, height):        
@@ -78,15 +129,14 @@ class TextArea(gtk.DrawingArea):
         pango.FontDescription.set_size(desc, int(1024*self.zoom))
 
 
-        attr = pango.AttrSize(8000, 0, -1)
-
+        attr = pango.AttrSize(8000, 210, 344)
         attrlist = pango.AttrList()
         attrlist.insert(attr)
 
         self.pg.set_font_description(desc)
         self.pg.set_attributes(attrlist)
         self.pg.set_text(self.output_text)
-        
+
 
         self.cr.show_layout(self.pg)
 
