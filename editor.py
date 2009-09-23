@@ -29,15 +29,13 @@ class TextArea(gtk.DrawingArea):
         self.current_point = [20,20]
         self.current_scale = 12
         self.min_line = 0
-        self.lines = 100 
-        self.end_count = []
         self.indent = 0
 
         self.min_text = 0
-        self.max_text = 0
+        self.max_text = 50
 
         self.min_cairo = 20
-        self.max_cairo = 0
+        self.max_cairo = 20
 
 
     # Handle the expose-event by drawing
@@ -59,21 +57,29 @@ class TextArea(gtk.DrawingArea):
 
         self.draw(*self.window.get_size())
 
+
     def indentation(self, text):
+        """ 
+            Decides if the current line is indented to the 
+            same number of tabs as the previous one.
+            If not, sets self.indent to the current value.
+        """
+
         tab = text.rfind(' '*4)
-        if tab != -1:
-            print "tabs: ", tab%4, tab//4 + 1, self.indent
-            if tab%4 == 0 and tab//4 + 1 == self.indent:
-                print "True"
+        
+        if tab != -1:  
+            if tab%4 == 0:
+                if tab//4 + 1 == self.indent:
+                    return True
+            
+                else:
+                    self.indent = tab//4 + 1
+                    return False
+            
+            else:
                 return True
 
-            else:
-                self.indent = tab//4 + 1
-                print "False"
-                return False
-
         else:
-            print "True"
             return True
 
 
@@ -82,55 +88,16 @@ class TextArea(gtk.DrawingArea):
             Decides what section of text needs to be shown
         """
 
-        """
-        if self.min_line == self.end_count[0] * 100:
-            self.lines = self.end_count[1]
-            self.end_of_file =1
-        """
-       
-        
-        char_index = []
-        indent = 0
-        line_count = 0
-        line_min = 0
-        in_block = 1
-        char_min = 0
-        char_max = 0
-
-        while line_count <= 20:
-            print self.text[line_count], self.indent
-        
-            if self.indentation(self.text[line_count]): 
-                line_count += 1 
-                print "lc", line_count
-
-            else:
-                print "char min and max;", char_min, char_max
-                print "line min and count", line_min, line_count
-                char_max += len('\n'.join(self.text[line_min:line_count]))
-                print "charmax", char_max
-                char_index.append([self.indent, line_min, line_count, char_min, char_max])
-                char_max += 1
-                char_min = char_max
-
-                line_min = line_count 
-            
-        
-        print line_count, char_index
-        print "total char", len('\n'.join(self.text[0:20]))
-        
-        self.output_text = '\n'.join(self.text[self.min_line:(self.min_line + self.lines)]) 
+    
+        #self.output_text = '\n'.join(self.text[self.min_line:(self.min_line + self.lines)]) 
 
 
-    def is_on_screen(self):
-        pass
 
     def draw(self, width, height):        
         """
             Invokes cairo and pango to draw the text
         """
         
-        self.cr.move_to(20, self.min_cairo)
         desc = pango.FontDescription("sans normal")
 
         pango.FontDescription.set_size(desc, int(1024*self.zoom))
@@ -143,19 +110,14 @@ class TextArea(gtk.DrawingArea):
         self.pg.set_font_description(desc)
         self.pg.set_attributes(attrlist)
         
-        y = 20
-        window_size= self.window.get_size()
 
-        self.max_text = window_size[1]//20 + 1
 
         if self.text:
             for l in range(self.min_text, self.max_text):
+                self.cr.move_to(20, self.max_cairo)
                 self.pg.set_text(self.text[l])
                 self.cr.show_layout(self.pg)
-                y += 20
-                self.min_cairo = y - self.scroll
-                self.cr.move_to(20, self.min_cairo)
-
+                self.max_cairo += 20 
 
 
     def redraw_canvas(self, dy):
@@ -164,48 +126,36 @@ class TextArea(gtk.DrawingArea):
             pango layout when text needs to be redrawn
         """
        
-        self.scroll = dy/10
+        self.scroll = dy/20
         print self.scroll
-        self.current_point = list(self.cr.get_current_point())
 
-        pango_end_of_text = self.pg.get_pixel_extents()
+        if dy > 0:
+            if self.min_cairo < -20:
+                self.min_cairo = 0 
+                self.min_text += 1 
+                self.max_text += 1
+           
+            """
+            line_count = len(self.text)  
+            if self.max_text >= line_count:
+                self.max_text = line_count -1
+                self.min_text = self.max_text - 50
+                self.scroll = 0
+            """
 
-        if self.min_cairo < -40:
-            self.min.cairo = 20 
-            self.min_text += 3 
-            self.max_text += 3
+        else:
+            if self.min_cairo > 0:
+                self.min_cairo = -20
+                self.min_text -= 1
+                self.max_text -=1
 
-        """
-        if dy >= 0:
-            sign = 1
-            if self.text and self.current_point[1] < -(pango_end_of_text[1][3]/2 - 20):
-                buffer = -(pango_end_of_text[1][3]/2 - 20) - self.current_point[1]
-                self.min_line += 50
-                self.current_point = [20,20 - buffer]
-                self.parse_text()
+            if self.min_text < -1:
                 self.scroll = 0
         
-        else:
-            sign = -1
-            if self.text and self.current_point[1] > 0:
-                buffer =  self.current_point[1]
-                self.min_line -= 50
-                self.current_point = [20, -(pango_end_of_text[1][3]/2) + buffer]
-                self.parse_text()
-                self.scroll = 0
-       
-        if abs(dy) > 100 and abs(dy) < 350:
-            self.zoom = 12 - pow(2,(abs(dy) - 100) / (350 - 100))
-            self.scroll = sign * 12 * 12 / self.zoom
+           
 
-        elif abs(dy) <= 100:
-            self.zoom = 12
-            self.scroll = dy * 12 / 100 
-
-        else:
-            self.zoom = 10
-            self.scroll = sign * 18
-        """
+        self.min_cairo -= self.scroll
+        self.max_cairo = self.min_cairo
 
         if self.window:
             x, y, w, h = self.get_allocation()
