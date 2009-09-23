@@ -31,6 +31,9 @@ class TextArea(gtk.DrawingArea):
         self.min_line = 0
         self.indent = 0
 
+
+        self.char_index = []
+
         self.line_count = 0
 
         self.min_text = 0
@@ -89,7 +92,6 @@ class TextArea(gtk.DrawingArea):
         """
             Builds a list of the indentation level in the text
         """
-        char_index = []
         line_number = 0
         line_min = 0
         char_min = 0
@@ -100,7 +102,7 @@ class TextArea(gtk.DrawingArea):
         while line_number < point:
         
             if self.indentation(self.text[line_number]): 
-                char_index.append([line_number, self.indent])
+                self.char_index.append([line_number, self.indent])
                 self.text[line_number] = self.text[line_number].strip()      
                 line_number += 1 
 
@@ -132,7 +134,10 @@ class TextArea(gtk.DrawingArea):
         
 
         if self.text:
+            print "min text", self.min_text
+            print self.text[self.min_text]
             for l in range(self.min_text, self.max_text):
+                
                 self.cr.move_to(self.tab_cairo, self.max_cairo)
                 self.pg.set_text(self.text[l])
                 self.cr.show_layout(self.pg)
@@ -154,7 +159,7 @@ class TextArea(gtk.DrawingArea):
                 self.max_text += 1
            
      
-        else:
+        elif dy < 0:
             if self.min_cairo > 0:
                 self.min_cairo = -20
                 self.min_text -= 1
