@@ -25,7 +25,9 @@ class TextArea(gtk.DrawingArea):
         self.output_text = ""
         self.scroll = 0
         self.speed = 0
-        self.zoom = 12
+        self.zoom = 12000
+        self.factor = 0
+
         self.current_point = [20,20]
         self.current_scale = 12
         self.min_line = 0
@@ -102,7 +104,7 @@ class TextArea(gtk.DrawingArea):
         while line_number < point:
         
             if self.indentation(self.text[line_number]): 
-                self.char_index.append([line_number, self.indent])
+                self.char_index.append(self.indent)
                 self.text[line_number] = self.text[line_number].strip()      
                 line_number += 1 
 
@@ -112,8 +114,6 @@ class TextArea(gtk.DrawingArea):
                 char_max += 1
                 char_min = char_max
                 line_min = line_number
-           
-
 
     def draw(self, width, height):        
         """
@@ -122,10 +122,10 @@ class TextArea(gtk.DrawingArea):
         
         desc = pango.FontDescription("sans normal")
 
-        pango.FontDescription.set_size(desc, int(1024*self.zoom))
+        pango.FontDescription.set_size(desc, int(1024))
 
 
-        attr = pango.AttrSize(12000, 0, -1)
+        attr = pango.AttrSize(self.zoom, 0, -1)
         attrlist = pango.AttrList()
         attrlist.insert(attr)
 
@@ -134,14 +134,20 @@ class TextArea(gtk.DrawingArea):
         
 
         if self.text:
-            print "min text", self.min_text
-            print self.text[self.min_text]
             for l in range(self.min_text, self.max_text):
+                
+                for tabs in range(0,10):
+                    if self.char_index[l] == tabs:
+                        self.tab_cairo += tabs * 20
+                        #attr = pango.AttrSize(int(self.zoom - (tabs * self.factor)) , 0, -1)
+                        #attrlist.change(attr)
+                        #self.pg.set_attributes(attrlist)
                 
                 self.cr.move_to(self.tab_cairo, self.max_cairo)
                 self.pg.set_text(self.text[l])
                 self.cr.show_layout(self.pg)
                 self.max_cairo += 20 
+                self.tab_cairo = 20
 
 
 
@@ -151,21 +157,31 @@ class TextArea(gtk.DrawingArea):
             pango layout when text needs to be redrawn
         """
         self.scroll = dy/20
+        
+        """
+        if self.scroll > 5:
+            self.factor = self.scroll * 50
+            #self.factor = 1000   
+        """
 
-        if dy > 0:
+        if self.scroll > 0:
+            
             if self.min_cairo < -20:
                 self.min_cairo = 0 
                 self.min_text += 1 
                 self.max_text += 1
            
      
-        elif dy < 0:
+        elif self.scroll < 0:
             if self.min_cairo > 0:
                 self.min_cairo = -20
                 self.min_text -= 1
                 self.max_text -=1
 
-            if self.min_text < -1:
+            if self.min_text < 0:
+                self.min_cairo = 20
+                self.min_text = 0
+                self.max_text = 50
                 self.scroll = 0
         
            
