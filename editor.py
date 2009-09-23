@@ -31,12 +31,14 @@ class TextArea(gtk.DrawingArea):
         self.min_line = 0
         self.indent = 0
 
+        self.line_count = 0
+
         self.min_text = 0
         self.max_text = 50
 
         self.min_cairo = 20
         self.max_cairo = 20
-
+        self.tab_cairo = 20
 
     # Handle the expose-event by drawing
     def do_expose_event(self, widget, event):
@@ -57,7 +59,6 @@ class TextArea(gtk.DrawingArea):
 
         self.draw(*self.window.get_size())
 
-
     def indentation(self, text):
         """ 
             Decides if the current line is indented to the 
@@ -66,12 +67,12 @@ class TextArea(gtk.DrawingArea):
         """
 
         tab = text.rfind(' '*4)
-        
+
         if tab != -1:  
             if tab%4 == 0:
                 if tab//4 + 1 == self.indent:
                     return True
-            
+
                 else:
                     self.indent = tab//4 + 1
                     return False
@@ -83,14 +84,33 @@ class TextArea(gtk.DrawingArea):
             return True
 
 
+
     def parse_text(self):
         """
-            Decides what section of text needs to be shown
+            Builds a list of the indentation level in the text
         """
+        char_index = []
+        line_number = 0
+        line_min = 0
+        char_min = 0
+        char_max = 0
+        
+        point = self.line_count
+       
+        while line_number < point:
+        
+            if self.indentation(self.text[line_number]): 
+                char_index.append([line_number, self.indent])
+                self.text[line_number] = self.text[line_number].strip()      
+                line_number += 1 
 
-    
-        #self.output_text = '\n'.join(self.text[self.min_line:(self.min_line + self.lines)]) 
-
+            else:
+                #char_max += len('\n'.join(self.text[line_min:line_number]))
+                #char_index.append([self.indent, line_min, line_number, char_min, char_max])
+                char_max += 1
+                char_min = char_max
+                line_min = line_number
+           
 
 
     def draw(self, width, height):        
@@ -103,7 +123,7 @@ class TextArea(gtk.DrawingArea):
         pango.FontDescription.set_size(desc, int(1024*self.zoom))
 
 
-        attr = pango.AttrSize(8000, 210, 344)
+        attr = pango.AttrSize(12000, 0, -1)
         attrlist = pango.AttrList()
         attrlist.insert(attr)
 
@@ -111,13 +131,13 @@ class TextArea(gtk.DrawingArea):
         self.pg.set_attributes(attrlist)
         
 
-
         if self.text:
             for l in range(self.min_text, self.max_text):
-                self.cr.move_to(20, self.max_cairo)
+                self.cr.move_to(self.tab_cairo, self.max_cairo)
                 self.pg.set_text(self.text[l])
                 self.cr.show_layout(self.pg)
                 self.max_cairo += 20 
+
 
 
     def redraw_canvas(self, dy):
@@ -125,9 +145,7 @@ class TextArea(gtk.DrawingArea):
             Invalidates the cairo area and updates the 
             pango layout when text needs to be redrawn
         """
-       
         self.scroll = dy/20
-        print self.scroll
 
         if dy > 0:
             if self.min_cairo < -20:
@@ -135,14 +153,7 @@ class TextArea(gtk.DrawingArea):
                 self.min_text += 1 
                 self.max_text += 1
            
-            """
-            line_count = len(self.text)  
-            if self.max_text >= line_count:
-                self.max_text = line_count -1
-                self.min_text = self.max_text - 50
-                self.scroll = 0
-            """
-
+     
         else:
             if self.min_cairo > 0:
                 self.min_cairo = -20
@@ -167,10 +178,10 @@ class TextArea(gtk.DrawingArea):
 class PyViewer():
     ui = '''<ui>
     <menubar name="MenuBar">
-      <menu name="File" action="File">
-        <menuitem name="Open" action="Open"/>   
-        <menuitem name="Quit" action="Quit"/>
-      </menu>
+        <menu name="File" action="File">
+            <menuitem name="Open" action="Open"/>   
+            <menuitem name="Quit" action="Quit"/>
+        </menu>
     </menubar>
 
     </ui>'''        
@@ -181,7 +192,7 @@ class PyViewer():
             Set up the window, events and the UIManager
         """
         
-        __gsignals__ = { "expose-event": None }
+        __gsignals__ = { "expose-event" : None}
 
         self.filename = ""
         self.source_id = 0
@@ -193,8 +204,13 @@ class PyViewer():
         
         self.scroll_distance = 0
         self.mouse_click_point = 0
+        
+        #Create a TextArea class instance
+        self.drawing = TextArea()
 
-        self.window.connect('drag-begin', self.start_refresh)
+        self.drawing.show()
+        
+        self.window.connect('drag_begin', self.start_refresh)
         self.window.connect('drag_motion', self.drag_motion)
         self.window.connect('drag_end', self.stop_drag_motion)
     
@@ -208,6 +224,7 @@ class PyViewer():
      
         self.window.connect('destroy', lambda w: gtk.main_quit())
     
+
         self.window.set_default_size(600,900)
         self.window.move(300,100)
 
@@ -324,9 +341,9 @@ class PyViewer():
                 ifile.close()
                 dialog.destroy()
                 
-                line_count = len(self.drawing.text)
+                self.drawing.line_count = len(self.drawing.text)
                 
-                self.drawing.end_count = [(line_count // 100),(line_count % 100)]
+                self.drawing.end_count = [(self.drawing.line_count // 100),(self.drawing.line_count % 100)]
 
                 self.drawing.parse_text()
 
@@ -344,4 +361,3 @@ class PyViewer():
 if __name__ == '__main__':
     PyViewer()
     gtk.main()
-
