@@ -56,19 +56,20 @@ class TextArea(gtk.DrawingArea):
 
     def indentation(self, text):
         tab = text.rfind(' '*4)
-        if tab != -1:
-            print "tabs: ", tab%4, tab//4 + 1, self.indent
-            if tab%4 == 0 and tab//4 + 1 == self.indent:
-                print "True"
+        
+        if tab != -1:  
+            if tab%4 == 0:
+                if tab//4 + 1 == self.indent:
+                    return True
+            
+                else:
+                    self.indent = tab//4 + 1
+                    return False
+            
+            else:
                 return True
 
-            else:
-                self.indent = tab//4 + 1
-                print "False"
-                return False
-
         else:
-            print "True"
             return True
 
 
@@ -92,7 +93,7 @@ class TextArea(gtk.DrawingArea):
         char_min = 0
         char_max = 0
 
-        while line_count <= 20:
+        while line_count <= 100:
             print self.text[line_count], self.indent
         
             if self.indentation(self.text[line_count]): 
@@ -112,7 +113,7 @@ class TextArea(gtk.DrawingArea):
             
         
         print line_count, char_index
-        print "total char", len('\n'.join(self.text[0:20]))
+        print "total char", len('\n'.join(self.text[0:100]))
         
         self.output_text = '\n'.join(self.text[self.min_line:(self.min_line + self.lines)]) 
 
