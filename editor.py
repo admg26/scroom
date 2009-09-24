@@ -11,7 +11,7 @@ import time
 class TextArea(gtk.DrawingArea):
    
     def __init__(self):
-
+        
         super(TextArea, self).__init__()
         self.connect("expose_event", self.do_expose_event)
         self.set_initial_values()
@@ -25,7 +25,7 @@ class TextArea(gtk.DrawingArea):
         self.output_text = ""
         self.scroll = 0
         self.speed = 0
-        self.zoom = 12000
+        self.zoom = 12
         self.factor = 0
 
         self.current_point = [20,20]
@@ -33,6 +33,7 @@ class TextArea(gtk.DrawingArea):
         self.min_line = 0
         self.indent = 0
 
+        self.set_pc = 1
 
         self.char_index = []
 
@@ -45,12 +46,8 @@ class TextArea(gtk.DrawingArea):
         self.max_cairo = 20
         self.tab_cairo = 20
 
-    # Handle the expose-event by drawing
-    def do_expose_event(self, widget, event):
-        """
-            Sets up cairo and calls draw() to draw the text
-        """
-
+    def set_up_pangocairo(self, widget, event):    
+   
         # Create the cairo context
         self.cr = self.window.cairo_create()
          
@@ -61,6 +58,27 @@ class TextArea(gtk.DrawingArea):
         self.cr.rectangle(event.area.x, event.area.y,
                 event.area.width, event.area.height)
         self.cr.clip()
+
+        if self.set_pc:
+            self.desc = pango.FontDescription("sans normal")
+            pango.FontDescription.set_size(self.desc, int(1024))
+            self.pg.set_font_description(self.desc)
+
+            #self.attr = pango.AttrSize(self.zoom, 0, -1)
+            #self.attrlist = pango.AttrList()
+            #self.attrlist.insert(self.attr)
+            self.set_pc = 0
+
+            #self.pg.set_attributes(self.attrlist)
+        
+
+    # Handle the expose-event by drawing
+    def do_expose_event(self, widget, event):
+        """
+            Sets up cairo and calls draw() to draw the text
+        """
+        print "expose"  
+        self.set_up_pangocairo(widget, event)
 
         self.draw(*self.window.get_size())
 
@@ -119,30 +137,24 @@ class TextArea(gtk.DrawingArea):
         """
             Invokes cairo and pango to draw the text
         """
-        
-        desc = pango.FontDescription("sans normal")
-
-        pango.FontDescription.set_size(desc, int(1024))
-
-
-        attr = pango.AttrSize(self.zoom, 0, -1)
-        attrlist = pango.AttrList()
-        attrlist.insert(attr)
-
-        self.pg.set_font_description(desc)
-        self.pg.set_attributes(attrlist)
-        
-
+       
+        print "draw"
+        if self.scroll > 5:
+            self.factor = self.scroll * 50
+            #self.factor = 1000   
+    
         if self.text:
             for l in range(self.min_text, self.max_text):
                 
                 for tabs in range(0,10):
                     if self.char_index[l] == tabs:
                         self.tab_cairo += tabs * 20
-                        #attr = pango.AttrSize(int(self.zoom - (tabs * self.factor)) , 0, -1)
-                        #attrlist.change(attr)
-                        #self.pg.set_attributes(attrlist)
-                
+                        #self.attr = pango.AttrSize(int(self.zoom - (tabs * self.factor)) , 0, -1)
+                        #self.attrlist.change(self.attr)
+                        pango.FontDescription.set_size(self.desc, int((12-tabs)*pango.SCALE))
+                        
+                        self.pg.set_font_description(self.desc)
+
                 self.cr.move_to(self.tab_cairo, self.max_cairo)
                 self.pg.set_text(self.text[l])
                 self.cr.show_layout(self.pg)
@@ -158,11 +170,7 @@ class TextArea(gtk.DrawingArea):
         """
         self.scroll = dy/20
         
-        """
-        if self.scroll > 5:
-            self.factor = self.scroll * 50
-            #self.factor = 1000   
-        """
+        print "redraw"
 
         if self.scroll > 0:
             
