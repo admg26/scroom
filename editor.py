@@ -29,7 +29,6 @@ class TextArea(gtk.DrawingArea):
         self.factor = 0
 
         self.current_point = [20,20]
-        self.current_scale = 12
         self.min_line = 0
         self.indent = 0
 
@@ -61,7 +60,7 @@ class TextArea(gtk.DrawingArea):
 
         if self.set_pc:
             self.desc = pango.FontDescription("sans normal")
-            pango.FontDescription.set_size(self.desc, int(1024))
+            pango.FontDescription.set_size(self.desc, int(self.zoom*1024))
             self.pg.set_font_description(self.desc)
 
             #self.attr = pango.AttrSize(self.zoom, 0, -1)
@@ -137,11 +136,19 @@ class TextArea(gtk.DrawingArea):
         """
             Invokes cairo and pango to draw the text
         """
+
+        line_spacing = 20
        
         print "draw"
-        if self.scroll > 5:
-            self.factor = self.scroll * 50
-            #self.factor = 1000   
+        if self.scroll > 20:
+            self.factor = self.scroll * 0.1
+            #self.factor = 1000  
+
+        elif self.scroll < -20:
+            self.factor = abs(self.scroll) * 0.1
+        
+        else:
+            self.factor = 0
     
         if self.text:
             for l in range(self.min_text, self.max_text):
@@ -151,15 +158,21 @@ class TextArea(gtk.DrawingArea):
                         self.tab_cairo += tabs * 20
                         #self.attr = pango.AttrSize(int(self.zoom - (tabs * self.factor)) , 0, -1)
                         #self.attrlist.change(self.attr)
-                        pango.FontDescription.set_size(self.desc, int((12-tabs)*pango.SCALE))
+                        font_size =  int(self.zoom - (tabs * self.factor))*pango.SCALE
+                        if font_size < 9000:
+                            font_size = 9000
+                        pango.FontDescription.set_size(self.desc, font_size)
                         
                         self.pg.set_font_description(self.desc)
+                        line_spacing -= tabs * 0.5 
+
 
                 self.cr.move_to(self.tab_cairo, self.max_cairo)
                 self.pg.set_text(self.text[l])
                 self.cr.show_layout(self.pg)
-                self.max_cairo += 20 
+                self.max_cairo += line_spacing              
                 self.tab_cairo = 20
+                line_spacing  = 20
 
 
 
@@ -178,7 +191,12 @@ class TextArea(gtk.DrawingArea):
                 self.min_cairo = 0 
                 self.min_text += 1 
                 self.max_text += 1
-           
+                
+            if self.max_text > self.line_count + 2:
+                self.min_cairo = 0
+                self.min_text = self.line_count - 50
+                self.max_text = self.line_count
+                self.scroll = 0
      
         elif self.scroll < 0:
             if self.min_cairo > 0:
