@@ -8,6 +8,7 @@ import cairo
 import pango
 import time
 
+
 class TextArea(gtk.DrawingArea):
    
     def __init__(self):
@@ -285,6 +286,7 @@ class PyViewer():
 
         # Create a UIManager instance
         uimanager = gtk.UIManager()
+        self.current_scale = 16
 
         # Add the accelerator group to the toplevel window
         accelgroup = uimanager.get_accel_group()
@@ -408,3 +410,4 @@ class PyViewer():
 if __name__ == '__main__':
     PyViewer()
     gtk.main()
+        
