@@ -151,30 +151,46 @@ class TextArea(gtk.DrawingArea):
         else:
             self.factor = 0
     
-        if self.text:
-            for l in range(self.min_text, self.max_text):
-                
-                for tabs in range(0,10):
-                    if self.char_index[l] == tabs:
-                        self.tab_cairo += tabs * 20
-                        #self.attr = pango.AttrSize(int(self.zoom - (tabs * self.factor)) , 0, -1)
-                        #self.attrlist.change(self.attr)
-                        font_size =  int(self.zoom - (tabs * self.factor))*pango.SCALE
-                        if font_size < 9000:
-                            font_size = 9000
-                        pango.FontDescription.set_size(self.desc, font_size)
-                        
-                        self.pg.set_font_description(self.desc)
-                        line_spacing -= tabs * 0.5 
+        output_text = ""
 
+        if self.text:
+            l = self.min_text
+            l1 = l
+            l2 = l + 1 
+            tab_previous = self.char_index[l]
+
+            while l < self.max_text:
+
+                while self.char_index[l + 1] == tab_previous:
+                    l2 += 1 
+                    l += 1
+
+                self.tab_cairo += tab_previous * 20
+                font_size =  int(self.zoom - (tab_previous * self.factor))*pango.SCALE
+                
+                if font_size < 9000:
+                    font_size = 9000
+                
+                pango.FontDescription.set_size(self.desc, font_size)
+                
+                self.pg.set_font_description(self.desc)
+                line_spacing -= tab_previous * 0.5 
 
                 self.cr.move_to(self.tab_cairo, self.max_cairo)
-                self.pg.set_text(self.text[l])
+                
+                output_text = '\n'.join(self.text[l1:l2])
+                
+                self.pg.set_text(output_text)
                 self.cr.show_layout(self.pg)
-                self.max_cairo += line_spacing              
+
+
+                self.max_cairo += line_spacing * (l2 - l1)             
                 self.tab_cairo = 20
                 line_spacing  = 20
-
+                l += 1
+                tab_previous = self.char_index[l]
+                l1 = l
+                l2 = l + 1
 
 
     def redraw_canvas(self, dy):
